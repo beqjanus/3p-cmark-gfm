@@ -28,6 +28,7 @@ esac
 source_dir=${CMARK_GFM_SOURCE_DIR:-"$top/cmark-gfm"}
 build_dir="$top/build/$target"
 stage_dir="$top/stage"
+archive_dir="$build_dir/archives"
 
 if [[ ! -d "$source_dir/.git" ]]; then
   git clone "$UPSTREAM_URL" "$source_dir"
@@ -71,6 +72,10 @@ fi
 case "$target" in
   windows64)
     cmake_args+=(-G "Visual Studio 17 2022" -A x64)
+    # Visual Studio is a multi-config generator.  Put Release archives in a
+    # configuration-independent location so packaging does not depend on the
+    # generator's src/Release layout.
+    cmake_args+=("-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE=$archive_dir")
     build_args+=(--config Release)
     smoke_args+=(-G "Visual Studio 17 2022" -A x64)
     core_name=cmark-gfm_static.lib
@@ -97,12 +102,27 @@ find_library() {
   local name=$1
   local found
   found=$(find "$build_dir" -type f -name "$name" -print -quit)
-  [[ -n "$found" ]] || { echo "Built archive not found: $name" >&2; exit 1; }
+  [[ -n "$found" ]] || { echo "Built archive not found: $name" >&2; return 1; }
   printf '%s\n' "$found"
 }
 
-cp "$(find_library "$core_name")" "$stage_dir/lib/$core_name"
-cp "$(find_library "$extensions_name")" "$stage_dir/lib/$extensions_name"
+if [[ "$target" == windows64 ]]; then
+  core_archive="$archive_dir/$core_name"
+  extensions_archive="$archive_dir/$extensions_name"
+else
+  core_archive=$(find_library "$core_name")
+  extensions_archive=$(find_library "$extensions_name")
+fi
+
+for archive in "$core_archive" "$extensions_archive"; do
+  [[ -f "$archive" ]] || {
+    echo "Built archive not found: $archive" >&2
+    exit 1
+  }
+done
+
+cp "$core_archive" "$stage_dir/lib/$core_name"
+cp "$extensions_archive" "$stage_dir/lib/$extensions_name"
 cp "$source_dir/src/cmark-gfm.h" "$source_dir/src/cmark-gfm-extension_api.h" "$stage_dir/include/"
 cp "$build_dir/src/cmark-gfm_export.h" "$build_dir/src/cmark-gfm_version.h" "$stage_dir/include/"
 cp "$source_dir/extensions/cmark-gfm-core-extensions.h" "$stage_dir/include/"
