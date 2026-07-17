@@ -43,6 +43,11 @@
 build/
 Build/
 build-*/
+stage/
+installed/
+installed-manifest
+cmark-gfm/
+*.tar.bz2
 
 # CMake generated files
 CMakeFiles/

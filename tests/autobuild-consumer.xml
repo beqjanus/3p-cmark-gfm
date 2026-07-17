@@ -1,0 +1,43 @@
+<?xml version="1.0" ?>
+<!-- Minimal consumer manifest used only to prove Autobuild local installation. -->
+<llsd>
+<map>
+  <key>version</key><string>1.3</string>
+  <key>type</key><string>autobuild</string>
+  <key>installables</key>
+  <map>
+    <key>cmark-gfm</key>
+    <map>
+      <key>name</key><string>cmark-gfm</string>
+      <key>version</key><string>0.29.0.gfm.13</string>
+      <key>license</key><string>BSD-2-Clause</string>
+      <key>license_file</key><string>LICENSES/cmark-gfm-COPYING.txt</string>
+      <key>platforms</key>
+      <map>
+        <key>windows64</key><map><key>name</key><string>windows64</string><key>archive</key><map><key>url</key><string>file:///unused</string></map></map>
+        <key>linux64</key><map><key>name</key><string>linux64</string><key>archive</key><map><key>url</key><string>file:///unused</string></map></map>
+        <key>darwin64</key><map><key>name</key><string>darwin64</string><key>archive</key><map><key>url</key><string>file:///unused</string></map></map>
+      </map>
+    </map>
+  </map>
+  <key>package_description</key>
+  <map>
+    <key>name</key><string>cmark-gfm-install-smoke</string>
+    <key>platforms</key>
+    <map>
+      <key>common</key>
+      <map>
+        <key>configurations</key>
+        <map>
+          <key>default</key>
+          <map><key>name</key><string>default</string><key>default</key><boolean>true</boolean></map>
+        </map>
+        <key>name</key><string>common</string>
+      </map>
+      <key>windows64</key><map><key>name</key><string>windows64</string><key>configurations</key><map><key>default</key><map><key>name</key><string>default</string><key>default</key><boolean>true</boolean></map></map></map>
+      <key>linux64</key><map><key>name</key><string>linux64</string><key>configurations</key><map><key>default</key><map><key>name</key><string>default</string><key>default</key><boolean>true</boolean></map></map></map>
+      <key>darwin64</key><map><key>name</key><string>darwin64</string><key>configurations</key><map><key>default</key><map><key>name</key><string>default</string><key>default</key><boolean>true</boolean></map></map></map>
+    </map>
+  </map>
+</map>
+</llsd>

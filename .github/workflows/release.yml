@@ -1,0 +1,88 @@
+name: release
+
+on:
+  push:
+    tags: ['cmark-gfm-*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: build ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows64
+            runner: windows-2022
+            platform: windows64
+          - name: linux64
+            runner: ubuntu-24.04
+            platform: linux64
+          - name: darwin64
+            runner: macos-15
+            platform: darwin64
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+        with:
+          arch: x64
+      - name: Install Ninja (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja
+      - name: Build, stage, and smoke test
+        shell: bash
+        env:
+          AUTOBUILD_PLATFORM: ${{ matrix.platform }}
+          AUTOBUILD_BUILD_ID: ${{ github.run_number }}
+        run: ./build-cmd.sh
+
+  package:
+    needs: build
+    name: package ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2022
+            platform: windows64
+          - runner: ubuntu-24.04
+            platform: linux64
+          - runner: macos-15
+            platform: darwin64
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: AlchemyViewer/action-autobuild@v5
+        with:
+          checkout: false
+          token: ${{ github.token }}
+          build-args: ../build-cmd.sh
+
+  publish:
+    needs: package
+    runs-on: ubuntu-24.04
+    # Tags are deliberate releases. A manually dispatched run is also deliberate.
+    if: startsWith(github.ref, 'refs/tags/cmark-gfm-') || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: AlchemyViewer/action-autobuild-release@v4
+        id: autobuild_release
+      - name: Collect release archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-archives
+          find "$GITHUB_WORKSPACE" -type f \( -name '*.tzst' -o -name '*.zst' \) -exec cp {} release-archives/ \;
+          test -n "$(find release-archives -type f -print -quit)"
+      - name: Setup rclone
+        uses: beqjanus/setup-rclone@main
+        with:
+          rclone_config: ${{ secrets.RCLONE_CONFIG }}
+      - name: Upload Autobuild archives to R2
+        run: rclone copy ./release-archives fs_r2_deploy:buildsupport --progress

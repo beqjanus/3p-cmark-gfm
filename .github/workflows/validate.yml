@@ -1,0 +1,60 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            runner: windows-2022
+            platform: windows64
+          - name: Ubuntu 24.04 x64
+            runner: ubuntu-24.04
+            platform: linux64
+          - name: macOS universal
+            runner: macos-15
+            platform: darwin64
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+        with:
+          arch: x64
+      - name: Install Ninja (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja
+      - name: Install Autobuild
+        shell: bash
+        run: python3 -m pip install --user autobuild llbase llsd
+      - name: Build, stage, and smoke test
+        shell: bash
+        env:
+          AUTOBUILD_PLATFORM: ${{ matrix.platform }}
+          AUTOBUILD_BUILD_ID: 0
+        run: ./build-cmd.sh
+      - name: Autobuild package and local install
+        shell: bash
+        env:
+          AUTOBUILD_PLATFORM: ${{ matrix.platform }}
+          AUTOBUILD_BUILD_ID: 0
+        run: |
+          autobuild -A64 build --config-file=autobuild.xml
+          autobuild -A64 package --config-file=autobuild.xml
+          archive="$(find "$PWD" -maxdepth 1 -name 'cmark_gfm-*.tar.bz2' -print -quit)"
+          test -n "$archive"
+          autobuild -A64 install --config-file=tests/autobuild-consumer.xml --skip-source-environment \
+            --install-dir=installed --installed-manifest=installed-manifest \
+            --local="$archive" cmark-gfm
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cmark-gfm-${{ matrix.platform }}
+          path: cmark_gfm-*.tar.bz2

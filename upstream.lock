@@ -1,0 +1,4 @@
+# cmark-gfm source pin.  build-cmd.sh verifies both values before building.
+UPSTREAM_URL=https://github.com/github/cmark-gfm.git
+UPSTREAM_TAG=0.29.0.gfm.13
+UPSTREAM_COMMIT=587a12bb54d95ac37241377e6ddc93ea0e45439b
