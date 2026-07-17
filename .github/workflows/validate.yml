@@ -34,7 +34,16 @@ jobs:
         run: brew install ninja
       - name: Install Autobuild
         shell: bash
-        run: python3 -m pip install --user autobuild llbase llsd
+        run: |
+          # Homebrew Python on macOS is externally managed (PEP 668), while
+          # --user installs are not on Git Bash's PATH on Windows.  A local
+          # virtual environment avoids both runner-specific behaviours.
+          python3 -m venv .autobuild-venv
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            .autobuild-venv/Scripts/python.exe -m pip install autobuild llbase llsd
+          else
+            .autobuild-venv/bin/python -m pip install autobuild llbase llsd
+          fi
       - name: Build, stage, and smoke test
         shell: bash
         env:
@@ -47,11 +56,16 @@ jobs:
           AUTOBUILD_PLATFORM: ${{ matrix.platform }}
           AUTOBUILD_BUILD_ID: 0
         run: |
-          autobuild -A64 build --config-file=autobuild.xml
-          autobuild -A64 package --config-file=autobuild.xml
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            autobuild="./.autobuild-venv/Scripts/autobuild.exe"
+          else
+            autobuild="./.autobuild-venv/bin/autobuild"
+          fi
+          "$autobuild" -A64 build --config-file=autobuild.xml
+          "$autobuild" -A64 package --config-file=autobuild.xml
           archive="$(find "$PWD" -maxdepth 1 -name 'cmark_gfm-*.tar.bz2' -print -quit)"
           test -n "$archive"
-          autobuild -A64 install --config-file=tests/autobuild-consumer.xml --skip-source-environment \
+          "$autobuild" -A64 install --config-file=tests/autobuild-consumer.xml --skip-source-environment \
             --install-dir=installed --installed-manifest=installed-manifest \
             --local="$archive" cmark-gfm
       - uses: actions/upload-artifact@v4

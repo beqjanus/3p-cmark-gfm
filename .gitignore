@@ -47,6 +47,7 @@ stage/
 installed/
 installed-manifest
 cmark-gfm/
+.autobuild-venv/
 *.tar.bz2
 
 # CMake generated files
