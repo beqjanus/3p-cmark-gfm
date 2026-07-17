@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.5)
 project(cmark_gfm_package_smoke C)
 
 if(NOT DEFINED STAGE_DIR)

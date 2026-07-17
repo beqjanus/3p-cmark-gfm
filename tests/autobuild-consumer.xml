@@ -9,7 +9,7 @@
     <key>cmark-gfm</key>
     <map>
       <key>name</key><string>cmark-gfm</string>
-      <key>version</key><string>0.29.0.gfm.13</string>
+      <key>version</key><string>0.29.0.gfm.13.git.499789b</string>
       <key>license</key><string>BSD-2-Clause</string>
       <key>license_file</key><string>LICENSES/cmark-gfm-COPYING.txt</string>
       <key>platforms</key>

@@ -23,23 +23,26 @@ case "$platform" in
   *) echo "Unsupported Autobuild platform: $platform" >&2; exit 1 ;;
 esac
 
-source_dir="$top/cmark-gfm"
+# Override only for a disposable source checkout, for example in a CI or
+# recovery build. The default remains the Autobuild source directory.
+source_dir=${CMARK_GFM_SOURCE_DIR:-"$top/cmark-gfm"}
 build_dir="$top/build/$target"
 stage_dir="$top/stage"
 
 if [[ ! -d "$source_dir/.git" ]]; then
-  git clone --depth 1 --branch "$UPSTREAM_TAG" "$UPSTREAM_URL" "$source_dir"
+  git clone "$UPSTREAM_URL" "$source_dir"
+elif ! git -C "$source_dir" diff --quiet || ! git -C "$source_dir" diff --cached --quiet; then
+  echo "Refusing to replace local changes in $source_dir; use a clean checkout or CMARK_GFM_SOURCE_DIR." >&2
+  exit 1
 fi
 
-# Fetch the named tag from the canonical remote before checking out the pinned
-# object.  This protects local source trees from silently building master.
-git -C "$source_dir" fetch --depth 1 "$UPSTREAM_URL" \
-  "refs/tags/$UPSTREAM_TAG:refs/tags/$UPSTREAM_TAG"
+# Refresh the recorded source branch, then check out the immutable lock-file
+# commit. This permits a master snapshot without silently advancing to master.
+git -C "$source_dir" fetch "$UPSTREAM_URL" "$UPSTREAM_REF"
 git -C "$source_dir" checkout --detach "$UPSTREAM_COMMIT"
 actual_commit=$(git -C "$source_dir" rev-parse HEAD)
-tag_commit=$(git -C "$source_dir" rev-parse "$UPSTREAM_TAG^{}")
-[[ "$actual_commit" == "$UPSTREAM_COMMIT" && "$tag_commit" == "$UPSTREAM_COMMIT" ]] || {
-  echo "Upstream tag/commit verification failed" >&2
+[[ "$actual_commit" == "$UPSTREAM_COMMIT" ]] || {
+  echo "Upstream commit verification failed" >&2
   exit 1
 }
 
@@ -104,7 +107,7 @@ cp "$source_dir/src/cmark-gfm.h" "$source_dir/src/cmark-gfm-extension_api.h" "$s
 cp "$build_dir/src/cmark-gfm_export.h" "$build_dir/src/cmark-gfm_version.h" "$stage_dir/include/"
 cp "$source_dir/extensions/cmark-gfm-core-extensions.h" "$stage_dir/include/"
 cp "$source_dir/COPYING" "$stage_dir/LICENSES/cmark-gfm-COPYING.txt"
-printf '%s.%s\n' "$UPSTREAM_TAG" "${AUTOBUILD_BUILD_ID:-0}" > "$stage_dir/VERSION.txt"
+printf '%s.%s\n' "$UPSTREAM_VERSION" "${AUTOBUILD_BUILD_ID:-0}" > "$stage_dir/VERSION.txt"
 
 if [[ "$target" == windows64 ]]; then
   powershell -NoProfile -ExecutionPolicy Bypass -File "$top/tests/verify-package.ps1" -StageDir "$stage_dir"

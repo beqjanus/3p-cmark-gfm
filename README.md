@@ -1,10 +1,10 @@
 # 3p-cmark-gfm
 
-Firestorm Autobuild package repository for [cmark-gfm](https://github.com/github/cmark-gfm), pinned to upstream tag `0.29.0.gfm.13` (`587a12bb54d95ac37241377e6ddc93ea0e45439b`). The pin is recorded in [`upstream.lock`](upstream.lock) and verified by the build script; it never builds upstream `master`.
+Firestorm Autobuild package repository for [cmark-gfm](https://github.com/github/cmark-gfm), pinned to the `master` snapshot commit `499789b49373bfa045d0e7547e5ee63444c77bca` (current on 2026-07-18). The pin is recorded in [`upstream.lock`](upstream.lock) and verified by the build script; it does not silently advance when upstream `master` changes.
 
 ## Contents and platforms
 
-The package supports Windows x64, Ubuntu 24.04 x64, and universal macOS (x86_64 + arm64). It contains only static libraries, public/generated headers, `LICENSES/cmark-gfm-COPYING.txt`, and `VERSION.txt` (`0.29.0.gfm.13.$AUTOBUILD_BUILD_ID`). No shared libraries or `cmark-gfm` executable are staged.
+The package supports Windows x64, Ubuntu 24.04 x64, and universal macOS (x86_64 + arm64). It contains only static libraries, public/generated headers, `LICENSES/cmark-gfm-COPYING.txt`, and `VERSION.txt` (`0.29.0.gfm.13.git.499789b.$AUTOBUILD_BUILD_ID`). No shared libraries or `cmark-gfm` executable are staged.
 
 | Platform | Core | Extensions |
 | --- | --- | --- |
@@ -25,6 +25,8 @@ AUTOBUILD_BUILD_ID=0 ./build-cmd.sh
 ```
 
 This downloads/verifies the pin when necessary, configures `Release` with `CMARK_STATIC=ON`, `CMARK_SHARED=OFF`, `CMARK_TESTS=OFF`, and PIC enabled, stages the package, validates its contents, and builds/runs `tests/smoke.c`. The smoke test registers the core extensions, attaches the table extension to a parser, parses Markdown, and links both static archives in viewer order. On macOS it also requires both archives to contain x86_64 and arm64 slices.
+
+The default `cmark-gfm/` checkout is protected from replacement when it has local changes. For a disposable checkout, set `CMARK_GFM_SOURCE_DIR=/path/to/clean/cmark-gfm`.
 
 To build and archive through Autobuild:
 
@@ -47,8 +49,8 @@ Substitute `windows64` or `darwin64` for `linux64` on those hosts.
 
 ## Releases and updates
 
-Push an intentional tag matching `cmark-gfm-*` (for example `cmark-gfm-0.29.0.gfm.13-1`) or use **Run workflow** for the release workflow. It builds all platforms, assembles releases through `AlchemyViewer/action-autobuild` and `AlchemyViewer/action-autobuild-release`, publishes the GitHub release artifacts, then copies the exact generated Autobuild `.zst`/`.tzst` archives to `fs_r2_deploy:buildsupport`. Configure the repository secret `RCLONE_CONFIG`; no credentials or rclone configuration are committed. Pull requests and ordinary branch pushes never reach the upload job.
+Push an intentional tag matching `cmark-gfm-*` (for example `cmark-gfm-master-499789b-1`) or use **Run workflow** for the release workflow. It builds all platforms, assembles releases through `AlchemyViewer/action-autobuild` and `AlchemyViewer/action-autobuild-release`, publishes the GitHub release artifacts, then copies the exact generated Autobuild `.zst`/`.tzst` archives to `fs_r2_deploy:buildsupport`. Configure the repository secret `RCLONE_CONFIG`; no credentials or rclone configuration are committed. Pull requests and ordinary branch pushes never reach the upload job.
 
-To update upstream, resolve and verify the desired release tag's commit, update all three values in `upstream.lock`, run the local build/smoke test, and let the validation workflow pass on every platform. Update this README and create a new intentional release tag only after review. No upstream patches are carried.
+To update upstream, resolve and verify the desired `master` commit, update `UPSTREAM_REF`, `UPSTREAM_COMMIT`, and `UPSTREAM_VERSION` in `upstream.lock`, run the local build/smoke test, and let the validation workflow pass on every platform. Update this README and create a new intentional release tag only after review. No upstream patches are carried.
 
 The reference repositories use a source/stage script and Autobuild release assembly. This package differs only by compiling upstream directly instead of repackaging another prebuilt dependency.
