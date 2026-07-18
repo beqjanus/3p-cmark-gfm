@@ -72,9 +72,9 @@ fi
 case "$target" in
   windows64)
     cmake_args+=(-G "Visual Studio 17 2022" -A x64)
-    # Visual Studio is a multi-config generator.  Put Release archives in a
-    # configuration-independent location so packaging does not depend on the
-    # generator's src/Release layout.
+    # Prefer a configuration-independent location for Visual Studio archives.
+    # Older CMake/VS combinations can still use their target-specific output
+    # directory, so archive discovery below remains authoritative.
     cmake_args+=("-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE=$archive_dir")
     build_args+=(--config Release)
     smoke_args+=(-G "Visual Studio 17 2022" -A x64)
@@ -102,17 +102,17 @@ find_library() {
   local name=$1
   local found
   found=$(find "$build_dir" -type f -name "$name" -print -quit)
-  [[ -n "$found" ]] || { echo "Built archive not found: $name" >&2; return 1; }
+  if [[ -z "$found" ]]; then
+    echo "Built archive not found: $name" >&2
+    echo "Static libraries produced under $build_dir:" >&2
+    find "$build_dir" -type f -name '*.lib' -print >&2
+    return 1
+  fi
   printf '%s\n' "$found"
 }
 
-if [[ "$target" == windows64 ]]; then
-  core_archive="$archive_dir/$core_name"
-  extensions_archive="$archive_dir/$extensions_name"
-else
-  core_archive=$(find_library "$core_name")
-  extensions_archive=$(find_library "$extensions_name")
-fi
+core_archive=$(find_library "$core_name")
+extensions_archive=$(find_library "$extensions_name")
 
 for archive in "$core_archive" "$extensions_archive"; do
   [[ -f "$archive" ]] || {
