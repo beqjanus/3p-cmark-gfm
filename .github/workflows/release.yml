@@ -86,3 +86,14 @@ jobs:
           rclone_config: ${{ secrets.RCLONE_CONFIG }}
       - name: Upload Autobuild archives to R2
         run: rclone copy ./release-archives fs_r2_deploy:buildsupport --progress
+      - name: Print Autobuild manifest values
+        shell: bash
+        run: |
+          set -euo pipefail
+          for archive in ./release-archives/*; do
+            filename=$(basename "$archive")
+            sha1=$(sha1sum "$archive" | awk '{print $1}')
+            url="https://3p.firestormviewer.org/$filename"
+            printf 'AUTOBUILD_XML archive=%s hash_algorithm=sha1 hash=%s url=%s\n' \
+              "$filename" "$sha1" "$url"
+          done
