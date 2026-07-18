@@ -29,11 +29,13 @@ source_dir=${CMARK_GFM_SOURCE_DIR:-"$top/cmark-gfm"}
 build_dir="$top/build/$target"
 stage_dir="$top/stage"
 archive_dir="$build_dir/archives"
+install_dir="$build_dir/install"
 
 # CMake accepts Git Bash paths for -S and -B.  However, action-autobuild
 # disables MSYS argument conversion and CMake misinterprets POSIX paths passed
 # in -D cache values (for example, as D:\\d\\a\\...).
 cmake_archive_dir="$archive_dir"
+cmake_install_dir="$install_dir"
 cmake_stage_dir="$stage_dir"
 if [[ "$target" == windows64 ]]; then
   command -v cygpath >/dev/null 2>&1 || {
@@ -41,6 +43,7 @@ if [[ "$target" == windows64 ]]; then
     exit 1
   }
   cmake_archive_dir=$(cygpath -w "$archive_dir")
+  cmake_install_dir=$(cygpath -w "$install_dir")
   cmake_stage_dir=$(cygpath -w "$stage_dir")
 fi
 
@@ -73,8 +76,9 @@ cmake_args=(
   -S "$source_dir" -B "$build_dir"
   -DCMARK_STATIC=ON -DCMARK_SHARED=OFF -DCMARK_TESTS=OFF
   -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+  "-DCMAKE_INSTALL_PREFIX=$cmake_install_dir"
 )
-build_args=(--build "$build_dir" --target libcmark-gfm_static libcmark-gfm-extensions_static --parallel)
+build_args=(--build "$build_dir" --target libcmark-gfm_static libcmark-gfm-extensions_static cmark-gfm --parallel)
 smoke_args=(-S "$top/tests" -B "$build_dir/smoke" "-DSTAGE_DIR=$cmake_stage_dir")
 
 if command -v ninja >/dev/null 2>&1; then
@@ -137,10 +141,25 @@ done
 
 cp "$core_archive" "$stage_dir/lib/$core_name"
 cp "$extensions_archive" "$stage_dir/lib/$extensions_name"
-cp "$source_dir/src/cmark-gfm.h" "$source_dir/src/cmark-gfm-extension_api.h" "$stage_dir/include/"
-cp "$build_dir/src/cmark-gfm_export.h" "$build_dir/src/cmark-gfm_version.h" "$stage_dir/include/"
-cp "$source_dir/extensions/cmark-gfm-core-extensions.h" "$stage_dir/include/"
-cp "$source_dir/COPYING" "$stage_dir/LICENSES/cmark-gfm-COPYING.txt"
+
+if [[ "$target" == windows64 ]]; then
+  # Read public files through CMake/Git instead of direct source-tree paths:
+  # action-autobuild's MSYS path policy makes those paths unreliable after
+  # CMake has configured the Visual Studio project.
+  cmake --install "$build_dir" --config Release
+  cp "$install_dir/include/cmark-gfm.h" \
+     "$install_dir/include/cmark-gfm-extension_api.h" \
+     "$install_dir/include/cmark-gfm_export.h" \
+     "$install_dir/include/cmark-gfm_version.h" \
+     "$install_dir/include/cmark-gfm-core-extensions.h" "$stage_dir/include/"
+  git -C "$source_dir" archive --format=tar HEAD COPYING | tar -x -C "$stage_dir/LICENSES"
+  mv "$stage_dir/LICENSES/COPYING" "$stage_dir/LICENSES/cmark-gfm-COPYING.txt"
+else
+  cp "$source_dir/src/cmark-gfm.h" "$source_dir/src/cmark-gfm-extension_api.h" "$stage_dir/include/"
+  cp "$build_dir/src/cmark-gfm_export.h" "$build_dir/src/cmark-gfm_version.h" "$stage_dir/include/"
+  cp "$source_dir/extensions/cmark-gfm-core-extensions.h" "$stage_dir/include/"
+  cp "$source_dir/COPYING" "$stage_dir/LICENSES/cmark-gfm-COPYING.txt"
+fi
 printf '%s.%s\n' "$UPSTREAM_VERSION" "${AUTOBUILD_BUILD_ID:-0}" > "$stage_dir/VERSION.txt"
 
 if [[ "$target" == windows64 ]]; then
