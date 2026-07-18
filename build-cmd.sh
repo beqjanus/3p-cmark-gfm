@@ -37,6 +37,7 @@ install_dir="$build_dir/install"
 cmake_archive_dir="$archive_dir"
 cmake_install_dir="$install_dir"
 cmake_stage_dir="$stage_dir"
+cmake_tests_dir="$top/tests"
 powershell_verify_script="$top/tests/verify-package.ps1"
 if [[ "$target" == windows64 ]]; then
   command -v cygpath >/dev/null 2>&1 || {
@@ -46,6 +47,7 @@ if [[ "$target" == windows64 ]]; then
   cmake_archive_dir=$(cygpath -w "$archive_dir")
   cmake_install_dir=$(cygpath -w "$install_dir")
   cmake_stage_dir=$(cygpath -w "$stage_dir")
+  cmake_tests_dir=$(cygpath -w "$top/tests")
   powershell_verify_script=$(cygpath -w "$top/tests/verify-package.ps1")
 fi
 
@@ -81,7 +83,7 @@ cmake_args=(
   "-DCMAKE_INSTALL_PREFIX=$cmake_install_dir"
 )
 build_args=(--build "$build_dir" --target libcmark-gfm_static libcmark-gfm-extensions_static cmark-gfm --parallel)
-smoke_args=(-S "$top/tests" -B "$build_dir/smoke" "-DSTAGE_DIR=$cmake_stage_dir")
+smoke_args=(-S "$cmake_tests_dir" -B "$build_dir/smoke" "-DSTAGE_DIR=$cmake_stage_dir")
 
 if command -v ninja >/dev/null 2>&1; then
   unix_generator=Ninja
@@ -98,6 +100,11 @@ case "$target" in
     cmake_args+=("-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE=$cmake_archive_dir")
     build_args+=(--config Release)
     smoke_args+=(-G "Visual Studio 17 2022" -A x64)
+    # Fail before the full upstream build if CMake cannot resolve the native
+    # test source or staged-package path under Git Bash.
+    cmake -S "$cmake_tests_dir" -B "$build_dir/windows-path-preflight" \
+      -G "Visual Studio 17 2022" -A x64 "-DSTAGE_DIR=$cmake_stage_dir"
+    rm -rf "$build_dir/windows-path-preflight"
     core_name=cmark-gfm_static.lib
     extensions_name=cmark-gfm-extensions_static.lib
     ;;
