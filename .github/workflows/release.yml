@@ -23,8 +23,8 @@ jobs:
             runner: macos-15
             platform: darwin64
     steps:
-      - uses: actions/checkout@v5
-      - uses: ilammy/msvc-dev-cmd@v1
+      - uses: actions/checkout@v7
+      - uses: TheMrMilchmann/setup-msvc-dev@v4
         if: runner.os == 'Windows'
         with:
           arch: x64
@@ -53,10 +53,10 @@ jobs:
           - runner: macos-15
             platform: darwin64
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: AlchemyViewer/action-autobuild@v5
+      - uses: AlchemyViewer/action-autobuild@v5.2.0
         with:
           checkout: false
           token: ${{ github.token }}
@@ -70,8 +70,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v5
-      - uses: AlchemyViewer/action-autobuild-release@v4
+      - uses: actions/checkout@v7
+      - uses: AlchemyViewer/action-autobuild-release@v4.5.0
         id: autobuild_release
       - name: Collect release archives
         shell: bash

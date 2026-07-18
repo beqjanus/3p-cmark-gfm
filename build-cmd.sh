@@ -30,6 +30,29 @@ build_dir="$top/build/$target"
 stage_dir="$top/stage"
 archive_dir="$build_dir/archives"
 
+# action-autobuild disables MSYS argument conversion.  Native CMake then
+# interprets a Git Bash path such as /d/a/workspace as D:\\d\\a\\workspace,
+# while shell tools correctly see it as D:\\a\\workspace.  Use native paths
+# only for CMake on Windows; keep POSIX paths for Bash file operations.
+cmake_source_dir="$source_dir"
+cmake_build_dir="$build_dir"
+cmake_archive_dir="$archive_dir"
+cmake_smoke_dir="$build_dir/smoke"
+cmake_stage_dir="$stage_dir"
+cmake_tests_dir="$top/tests"
+if [[ "$target" == windows64 ]]; then
+  command -v cygpath >/dev/null 2>&1 || {
+    echo "Windows builds require cygpath to pass native paths to CMake" >&2
+    exit 1
+  }
+  cmake_source_dir=$(cygpath -w "$source_dir")
+  cmake_build_dir=$(cygpath -w "$build_dir")
+  cmake_archive_dir=$(cygpath -w "$archive_dir")
+  cmake_smoke_dir=$(cygpath -w "$build_dir/smoke")
+  cmake_stage_dir=$(cygpath -w "$stage_dir")
+  cmake_tests_dir=$(cygpath -w "$top/tests")
+fi
+
 if [[ ! -d "$source_dir/.git" ]]; then
   git clone "$UPSTREAM_URL" "$source_dir"
 elif ! git -C "$source_dir" diff --quiet || ! git -C "$source_dir" diff --cached --quiet; then
@@ -56,12 +79,12 @@ find "$stage_dir" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
 mkdir -p "$build_dir" "$stage_dir/include" "$stage_dir/lib" "$stage_dir/LICENSES"
 
 cmake_args=(
-  -S "$source_dir" -B "$build_dir"
+  -S "$cmake_source_dir" -B "$cmake_build_dir"
   -DCMARK_STATIC=ON -DCMARK_SHARED=OFF -DCMARK_TESTS=OFF
   -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 )
-build_args=(--build "$build_dir" --target libcmark-gfm_static libcmark-gfm-extensions_static --parallel)
-smoke_args=(-S "$top/tests" -B "$build_dir/smoke" "-DSTAGE_DIR=$stage_dir")
+build_args=(--build "$cmake_build_dir" --target libcmark-gfm_static libcmark-gfm-extensions_static --parallel)
+smoke_args=(-S "$cmake_tests_dir" -B "$cmake_smoke_dir" "-DSTAGE_DIR=$cmake_stage_dir")
 
 if command -v ninja >/dev/null 2>&1; then
   unix_generator=Ninja
@@ -75,7 +98,7 @@ case "$target" in
     # Prefer a configuration-independent location for Visual Studio archives.
     # Older CMake/VS combinations can still use their target-specific output
     # directory, so archive discovery below remains authoritative.
-    cmake_args+=("-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE=$archive_dir")
+    cmake_args+=("-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE=$cmake_archive_dir")
     build_args+=(--config Release)
     smoke_args+=(-G "Visual Studio 17 2022" -A x64)
     core_name=cmark-gfm_static.lib
@@ -137,7 +160,7 @@ fi
 
 rm -rf "$build_dir/smoke"
 cmake "${smoke_args[@]}"
-cmake --build "$build_dir/smoke" --config Release --parallel
+cmake --build "$cmake_smoke_dir" --config Release --parallel
 if [[ "$target" != windows64 ]]; then
   "$build_dir/smoke/cmark-gfm-package-smoke"
 else
