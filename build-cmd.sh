@@ -30,6 +30,8 @@ build_dir="$top/build/$target"
 stage_dir="$top/stage"
 archive_dir="$build_dir/archives"
 install_dir="$build_dir/install"
+runtime_dir="$build_dir/runtime"
+smoke_runtime_dir="$build_dir/smoke/runtime"
 
 # CMake accepts Git Bash paths for -S and -B.  However, action-autobuild
 # disables MSYS argument conversion and CMake misinterprets POSIX paths passed
@@ -38,6 +40,8 @@ cmake_archive_dir="$archive_dir"
 cmake_install_dir="$install_dir"
 cmake_stage_dir="$stage_dir"
 cmake_tests_dir="$top/tests"
+cmake_runtime_dir="$runtime_dir"
+cmake_smoke_runtime_dir="$smoke_runtime_dir"
 powershell_verify_script="$top/tests/verify-package.ps1"
 if [[ "$target" == windows64 ]]; then
   command -v cygpath >/dev/null 2>&1 || {
@@ -48,6 +52,8 @@ if [[ "$target" == windows64 ]]; then
   cmake_install_dir=$(cygpath -w "$install_dir")
   cmake_stage_dir=$(cygpath -w "$stage_dir")
   cmake_tests_dir=$(cygpath -w "$top/tests")
+  cmake_runtime_dir=$(cygpath -w "$runtime_dir")
+  cmake_smoke_runtime_dir=$(cygpath -w "$smoke_runtime_dir")
   powershell_verify_script=$(cygpath -w "$top/tests/verify-package.ps1")
 fi
 
@@ -98,8 +104,12 @@ case "$target" in
     # Older CMake/VS combinations can still use their target-specific output
     # directory, so archive discovery below remains authoritative.
     cmake_args+=("-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE=$cmake_archive_dir")
+    cmake_args+=("-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE=$cmake_runtime_dir")
     build_args+=(--config Release)
-    smoke_args+=(-G "Visual Studio 17 2022" -A x64)
+    smoke_args+=(
+      -G "Visual Studio 17 2022" -A x64
+      "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE=$cmake_smoke_runtime_dir"
+    )
     # Fail before the full upstream build if CMake cannot resolve the native
     # test source or staged-package path under Git Bash.
     cmake -S "$cmake_tests_dir" -B "$build_dir/windows-path-preflight" \
@@ -183,5 +193,5 @@ cmake --build "$build_dir/smoke" --config Release --parallel
 if [[ "$target" != windows64 ]]; then
   "$build_dir/smoke/cmark-gfm-package-smoke"
 else
-  "$build_dir/smoke/Release/cmark-gfm-package-smoke.exe"
+  "$smoke_runtime_dir/cmark-gfm-package-smoke.exe"
 fi
