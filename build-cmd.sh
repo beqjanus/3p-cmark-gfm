@@ -37,6 +37,7 @@ install_dir="$build_dir/install"
 cmake_archive_dir="$archive_dir"
 cmake_install_dir="$install_dir"
 cmake_stage_dir="$stage_dir"
+powershell_verify_script="$top/tests/verify-package.ps1"
 if [[ "$target" == windows64 ]]; then
   command -v cygpath >/dev/null 2>&1 || {
     echo "Windows builds require cygpath to pass native CMake cache paths" >&2
@@ -45,6 +46,7 @@ if [[ "$target" == windows64 ]]; then
   cmake_archive_dir=$(cygpath -w "$archive_dir")
   cmake_install_dir=$(cygpath -w "$install_dir")
   cmake_stage_dir=$(cygpath -w "$stage_dir")
+  powershell_verify_script=$(cygpath -w "$top/tests/verify-package.ps1")
 fi
 
 if [[ ! -d "$source_dir/.git" ]]; then
@@ -163,7 +165,7 @@ fi
 printf '%s.%s\n' "$UPSTREAM_VERSION" "${AUTOBUILD_BUILD_ID:-0}" > "$stage_dir/VERSION.txt"
 
 if [[ "$target" == windows64 ]]; then
-  powershell -NoProfile -ExecutionPolicy Bypass -File "$top/tests/verify-package.ps1" -StageDir "$stage_dir"
+  powershell -NoProfile -ExecutionPolicy Bypass -File "$powershell_verify_script" -StageDir "$cmake_stage_dir"
 else
   "$top/tests/verify-package.sh" "$stage_dir" "$target"
 fi
